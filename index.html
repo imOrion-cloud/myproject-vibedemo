@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101525">
+  <title>倒计时 · 专注每一刻</title>
+  <style>
+    /* 基础配色与页面重置 */
+    :root {
+      color-scheme: dark;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: #101525;
+      color: #f5f7ff;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --muted: #8d96ad;
+      --accent: #9b8cff;
+      --accent-bright: #c0b7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 32px 18px;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse at 50% 5%, rgba(110, 91, 207, 0.18), transparent 44%),
+        radial-gradient(ellipse at 8% 90%, rgba(55, 105, 168, 0.12), transparent 38%),
+        #101525;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(100%, 480px);
+      position: relative;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 25px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 35px;
+      height: 35px;
+      place-items: center;
+      border: 1px solid rgba(192, 183, 255, 0.28);
+      border-radius: 12px;
+      color: var(--accent-bright);
+      background: rgba(155, 140, 255, 0.12);
+    }
+
+    .clock {
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    .panel {
+      padding: 35px 32px 27px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 28px;
+      background: linear-gradient(155deg, rgba(31, 38, 59, 0.96), rgba(23, 29, 46, 0.96));
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.035);
+      text-align: center;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .timer-wrap {
+      width: min(100%, 280px);
+      aspect-ratio: 1;
+      position: relative;
+      display: grid;
+      place-items: center;
+      margin: 22px auto 19px;
+    }
+
+    .timer-ring {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transform: rotate(-90deg);
+    }
+
+    .ring-track,
+    .ring-progress {
+      fill: none;
+      stroke-width: 5;
+    }
+
+    .ring-track {
+      stroke: rgba(255, 255, 255, 0.075);
+    }
+
+    .ring-progress {
+      stroke: url(#ringGradient);
+      stroke-linecap: round;
+      stroke-dasharray: 691.15;
+      stroke-dashoffset: 0;
+      filter: drop-shadow(0 0 8px rgba(155, 140, 255, 0.45));
+      transition: stroke-dashoffset 0.35s linear;
+    }
+
+    .timer-content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .time-display {
+      margin: 0;
+      font-size: clamp(46px, 12vw, 66px);
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.055em;
+      line-height: 1;
+    }
+
+    .status {
+      min-height: 18px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status.is-done {
+      color: #c0b7ff;
+    }
+
+    .duration-label {
+      margin: 0 0 12px;
+      color: #c9cde0;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+
+    .duration-fields {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .time-field {
+      width: 92px;
+      padding: 12px 10px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 13px;
+      background: rgba(10, 14, 26, 0.34);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .time-field:focus-within {
+      border-color: rgba(177, 164, 255, 0.65);
+      background: rgba(10, 14, 26, 0.62);
+    }
+
+    .time-field input {
+      width: 100%;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #f5f7ff;
+      font-size: 21px;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .time-field input::-webkit-inner-spin-button,
+    .time-field input::-webkit-outer-spin-button {
+      margin: 0;
+      appearance: none;
+    }
+
+    .time-field input[type="number"] {
+      appearance: textfield;
+    }
+
+    .time-field span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .time-separator {
+      margin-top: -16px;
+      color: #65708a;
+      font-size: 20px;
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .preset {
+      padding: 8px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.035);
+      color: #adb5ca;
+      cursor: pointer;
+      font-size: 11px;
+      transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+
+    .preset:hover {
+      transform: translateY(-1px);
+      border-color: rgba(177, 164, 255, 0.42);
+      background: rgba(155, 140, 255, 0.1);
+      color: #e5e0ff;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 27px;
+    }
+
+    .control-button {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 650;
+      transition: transform 0.2s, background 0.2s, border-color 0.2s, opacity 0.2s;
+    }
+
+    .control-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .control-button:focus-visible,
+    .preset:focus-visible {
+      outline: 2px solid var(--accent-bright);
+      outline-offset: 3px;
+    }
+
+    .control-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .primary-button {
+      flex: 1;
+      background: linear-gradient(135deg, #b3a6ff, #8c7cf1);
+      box-shadow: 0 8px 22px rgba(120, 101, 228, 0.22);
+      color: #17152a;
+    }
+
+    .primary-button:hover:not(:disabled) {
+      background: linear-gradient(135deg, #c5bcff, #9c8ef9);
+    }
+
+    .secondary-button {
+      padding: 0 17px;
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.045);
+      color: #c4cad9;
+    }
+
+    .secondary-button:hover:not(:disabled) {
+      border-color: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hint {
+      margin: 19px 0 0;
+      color: #717b94;
+      font-size: 11px;
+    }
+
+    .hint kbd {
+      padding: 2px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 5px;
+      color: #aab2c7;
+      font-family: inherit;
+      font-size: 10px;
+    }
+
+    @media (max-width: 420px) {
+      .panel {
+        padding: 29px 19px 24px;
+      }
+
+      .topbar {
+        margin-bottom: 18px;
+      }
+
+      .time-field {
+        width: 82px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◷</span>
+        <span>时光计</span>
+      </div>
+      <time class="clock" id="clock" aria-label="当前时间"></time>
+    </header>
+
+    <section class="panel" aria-label="倒计时工具">
+      <p class="eyebrow">FOCUS ON THE MOMENT</p>
+
+      <div class="timer-wrap">
+        <svg class="timer-ring" viewBox="0 0 240 240" aria-hidden="true">
+          <defs>
+            <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#c5bcff"></stop>
+              <stop offset="100%" stop-color="#8271eb"></stop>
+            </linearGradient>
+          </defs>
+          <circle class="ring-track" cx="120" cy="120" r="110"></circle>
+          <circle class="ring-progress" id="ringProgress" cx="120" cy="120" r="110"></circle>
+        </svg>
+        <div class="timer-content">
+          <p class="time-display" id="timeDisplay" role="timer" aria-live="off">00:25:00</p>
+          <p class="status" id="status" aria-live="polite">准备好后，开始专注</p>
+        </div>
+      </div>
+
+      <div class="duration-area">
+        <p class="duration-label">设置倒计时</p>
+        <div class="duration-fields">
+          <label class="time-field">
+            <input id="hours" type="number" inputmode="numeric" min="0" max="99" value="0"
+              aria-label="小时" autocomplete="off">
+            <span>小时</span>
+          </label>
+          <span class="time-separator" aria-hidden="true">:</span>
+          <label class="time-field">
+            <input id="minutes" type="number" inputmode="numeric" min="0" max="59" value="25"
+              aria-label="分钟" autocomplete="off">
+            <span>分钟</span>
+          </label>
+          <span class="time-separator" aria-hidden="true">:</span>
+          <label class="time-field">
+            <input id="seconds" type="number" inputmode="numeric" min="0" max="59" value="0"
+              aria-label="秒" autocomplete="off">
+            <span>秒</span>
+          </label>
+        </div>
+        <div class="presets" aria-label="快捷时长">
+          <button class="preset" type="button" data-seconds="300">5 分钟</button>
+          <button class="preset" type="button" data-seconds="600">10 分钟</button>
+          <button class="preset" type="button" data-seconds="1500">25 分钟</button>
+          <button class="preset" type="button" data-seconds="2700">45 分钟</button>
+          <button class="preset" type="button" data-seconds="3600">1 小时</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="control-button primary-button" id="startButton" type="button">
+          <span aria-hidden="true">▶</span>
+          <span id="startLabel">开始计时</span>
+        </button>
+        <button class="control-button secondary-button" id="pauseButton" type="button" disabled>
+          暂停
+        </button>
+        <button class="control-button secondary-button" id="resetButton" type="button">
+          重置
+        </button>
+      </div>
+      <p class="hint">按 <kbd>Space</kbd> 快速开始或暂停</p>
+    </section>
+  </main>
+
+  <script>
+    // 缓存页面元素，避免在计时循环中重复查询 DOM。
+    const hoursInput = document.getElementById("hours");
+    const minutesInput = document.getElementById("minutes");
+    const secondsInput = document.getElementById("seconds");
+    const timeDisplay = document.getElementById("timeDisplay");
+    const statusText = document.getElementById("status");
+    const ringProgress = document.getElementById("ringProgress");
+    const startButton = document.getElementById("startButton");
+    const startLabel = document.getElementById("startLabel");
+    const pauseButton = document.getElementById("pauseButton");
+    const resetButton = document.getElementById("resetButton");
+    const durationInputs = [hoursInput, minutesInput, secondsInput];
+    const ringCircumference = 2 * Math.PI * 110;
+
+    let remainingSeconds = 25 * 60;
+    let initialSeconds = 25 * 60;
+    let endTime = 0;
+    let intervalId = null;
+    let isRunning = false;
+    let hasStarted = false;
+    let audioContext = null;
+
+    // 把秒数格式化为两位或三位小时的 HH:MM:SS。
+    function formatTime(totalSeconds) {
+      const safeSeconds = Math.max(0, totalSeconds);
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const seconds = safeSeconds % 60;
+      return [hours, minutes, seconds]
+        .map((value) => String(value).padStart(2, "0"))
+        .join(":");
+    }
+
+    // 根据剩余时长刷新数字显示和圆环进度。
+    function renderTimer() {
+      timeDisplay.textContent = formatTime(remainingSeconds);
+      const progress = initialSeconds > 0 ? remainingSeconds / initialSeconds : 0;
+      ringProgress.style.strokeDashoffset = String(ringCircumference * (1 - progress));
+      document.title = isRunning
+        ? `${formatTime(remainingSeconds)} · 时光计`
+        : "倒计时 · 专注每一刻";
+    }
+
+    function readDuration() {
+      const values = durationInputs.map((input) => {
+        const value = Number.parseInt(input.value, 10);
+        return Number.isFinite(value) ? value : 0;
+      });
+      const [hours, minutes, seconds] = values;
+      return Math.max(0, hours) * 3600 + Math.max(0, minutes) * 60 + Math.max(0, seconds);
+    }
+
+    function setStatus(message, isDone = false) {
+      statusText.textContent = message;
+      statusText.classList.toggle("is-done", isDone);
+    }
+
+    function setInputsDisabled(disabled) {
+      durationInputs.forEach((input) => {
+        input.disabled = disabled;
+      });
+      document.querySelectorAll(".preset").forEach((button) => {
+        button.disabled = disabled;
+      });
+    }
+
+    function syncDurationFromInputs() {
+      if (isRunning) return;
+      initialSeconds = readDuration();
+      remainingSeconds = initialSeconds;
+      hasStarted = false;
+      startLabel.textContent = "开始计时";
+      pauseButton.disabled = true;
+      setStatus(initialSeconds > 0 ? "准备好后，开始专注" : "请先设置一个时长");
+      renderTimer();
+    }
+
+    function tick() {
+      // 以目标结束时间计算剩余值，避免浏览器后台节流导致倒计时变慢。
+      remainingSeconds = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      renderTimer();
+      if (remainingSeconds === 0) finishTimer();
+    }
+
+    function startTimer() {
+      if (isRunning) return;
+      if (!hasStarted) {
+        initialSeconds = readDuration();
+        remainingSeconds = initialSeconds;
+      }
+      if (remainingSeconds <= 0) {
+        setStatus("请先设置一个大于 0 的时长");
+        return;
+      }
+
+      isRunning = true;
+      hasStarted = true;
+      endTime = Date.now() + remainingSeconds * 1000;
+      setInputsDisabled(true);
+      startButton.disabled = true;
+      pauseButton.disabled = false;
+      startLabel.textContent = "计时中";
+      setStatus("专注进行中 · 让时间为你工作");
+      renderTimer();
+      intervalId = window.setInterval(tick, 200);
+    }
+
+    function pauseTimer() {
+      if (!isRunning) return;
+      remainingSeconds = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      window.clearInterval(intervalId);
+      intervalId = null;
+      isRunning = false;
+      startButton.disabled = false;
+      pauseButton.disabled = true;
+      startLabel.textContent = "继续计时";
+      setStatus("计时已暂停");
+      renderTimer();
+    }
+
+    function resetTimer() {
+      window.clearInterval(intervalId);
+      intervalId = null;
+      isRunning = false;
+      hasStarted = false;
+      initialSeconds = readDuration();
+      remainingSeconds = initialSeconds;
+      setInputsDisabled(false);
+      startButton.disabled = false;
+      pauseButton.disabled = true;
+      startLabel.textContent = "开始计时";
+      setStatus(initialSeconds > 0 ? "准备好后，开始专注" : "请先设置一个时长");
+      renderTimer();
+    }
+
+    function finishTimer() {
+      window.clearInterval(intervalId);
+      intervalId = null;
+      isRunning = false;
+      hasStarted = false;
+      remainingSeconds = 0;
+      setInputsDisabled(false);
+      startButton.disabled = false;
+      pauseButton.disabled = true;
+      startLabel.textContent = "再来一次";
+      setStatus("时间到啦，做得很好！", true);
+      renderTimer();
+      playAlarm();
+    }
+
+    // 使用 Web Audio API 发出短提示音，不依赖外部音频文件。
+    function playAlarm() {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      try {
+        audioContext = audioContext || new AudioContextClass();
+        if (audioContext.state === "suspended") audioContext.resume();
+
+        [0, 0.28, 0.56].forEach((delay, index) => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          const startAt = audioContext.currentTime + delay;
+          oscillator.type = "sine";
+          oscillator.frequency.value = index === 1 ? 880 : 660;
+          gain.gain.setValueAtTime(0.0001, startAt);
+          gain.gain.exponentialRampToValueAtTime(0.16, startAt + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.22);
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start(startAt);
+          oscillator.stop(startAt + 0.24);
+        });
+      } catch (error) {
+        console.error("播放倒计时提示音失败：", error);
+      }
+    }
+
+    // 快捷时长按钮会同步更新输入框与圆环。
+    document.querySelectorAll(".preset").forEach((button) => {
+      button.addEventListener("click", () => {
+        const totalSeconds = Number(button.dataset.seconds);
+        hoursInput.value = String(Math.floor(totalSeconds / 3600));
+        minutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+        secondsInput.value = String(totalSeconds % 60);
+        syncDurationFromInputs();
+      });
+    });
+
+    durationInputs.forEach((input) => {
+      input.addEventListener("input", syncDurationFromInputs);
+    });
+
+    startButton.addEventListener("click", startTimer);
+    pauseButton.addEventListener("click", pauseTimer);
+    resetButton.addEventListener("click", resetTimer);
+
+    // 空格键便于在键盘上快速开始和暂停，不干扰输入框操作。
+    document.addEventListener("keydown", (event) => {
+      const target = event.target;
+      const isTyping = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+      if (event.code !== "Space" || isTyping || target instanceof HTMLButtonElement) return;
+      event.preventDefault();
+      if (isRunning) pauseTimer();
+      else startTimer();
+    });
+
+    // 顶栏时钟使用本地时间，并每秒更新一次。
+    const clock = document.getElementById("clock");
+    function updateClock() {
+      clock.textContent = new Intl.DateTimeFormat("zh-CN", {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).format(new Date());
+    }
+
+    updateClock();
+    window.setInterval(updateClock, 1000);
+    renderTimer();
+  </script>
+</body>
+</html>
