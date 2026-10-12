@@ -1,0 +1,9 @@
+# VSCode编辑器缓存文件夹
+.vscode/
+
+# 系统自动生成的垃圾文件
+Thumbs.db
+.DS_Store
+
+# 日志文件
+*.log
